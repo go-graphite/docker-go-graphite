@@ -67,7 +67,7 @@ RUN apt-get clean\
 
 # defaults
 EXPOSE 80 2003 2004 8080 8081
-VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/nginx", "/etc/logrotate.d", "/var/log"]
+VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/nginx", "/etc/grafana", "/etc/logrotate.d", "/var/log"]
 WORKDIR /
 ENV HOME /root
 CMD ["/sbin/my_init"]
