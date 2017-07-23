@@ -1,0 +1,68 @@
+# Need to be URL, http or https
+# This url specifies the backend or a loadbalancer
+#
+# Is you are using carbonzipper you should set it to
+# zipper's url
+#
+# If you are using plain go-carbon or graphite-clickhouse
+# you should set it to URL of go-carbon's carbonserver module
+# or graphite-clickhouse's http url.
+zipper: "http://localhost:8080"
+# Listen address, should always include hostname or ip address and a port.
+listen: "localhost:8081"
+# Max concurrent requests to CarbonZipper
+concurency: 20
+cache:
+   # Type of caching. Valid: "mem", "memcache", "null"
+   type: "mem"
+   # Cache limit in megabytes
+   size_mb: 0
+   # Default cache timeout value. Identical to DEFAULT_CACHE_DURATION in graphite-web.
+   defaultTimeoutSec: 60
+   # Only used by memcache type of cache. List of memcache servers.
+   memcachedServers:
+       - "127.0.0.1:1234"
+       - "127.0.0.2:1235"
+# Amount of CPUs to use. 0 - unlimited
+cpus: 0
+# Timezone, default - local
+tz: ""
+# If 'true', carbonapi will send requests as is, with globs and braces
+# Otherwise for each request it will generate /metrics/find and then /render
+# individual metrics.
+# true --- faster, but will cause carbonzipper to consume much more RAM.
+#
+# For some backends (e.x. graphite-clickhouse) this *MUST* be set to true in order
+# to get reasonable performance
+#
+# For go-carbon --- it depends on how you use it.
+sendGlobsAsIs: false
+# If sendGlobsAsIs is set and resulting response will be larger than maxBatchSize
+# carbonapi will revert to old behavir. This allows you to use benifits of passing
+# globs as is but keep memory usage in sane limits.
+#
+# For go-carbon you might want it to keep in some reasonable limits, 100 is good "safe" defaults
+#
+# For some backends (e.x. graphite-clickhouse) you might want to set it to some insanly high value, like 100000
+maxBatchSize: 100
+graphite:
+    # Host:port where to send internal metrics
+    # Empty = disabled
+    host: "localhost:2003"
+    interval: "60s"
+    prefix: "carbon.api"
+# Maximium idle connections to carbonzipper
+idleConnections: 10
+pidFile: ""
+# See https://github.com/go-graphite/carbonzipper/blob/master/example.conf#L70-L108 for format explanation
+logger:
+    - logger: ""
+      file: "stderr"
+      level: "debug"
+      encoding: "console"
+      encodingTime: "iso8601"
+      encodingDuration: "seconds"
+    - logger: ""
+      file: "carbonapi.log"
+      level: "info"
+      encoding: "json"
