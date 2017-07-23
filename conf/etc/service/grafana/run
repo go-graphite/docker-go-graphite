@@ -1,5 +1,5 @@
 #!/bin/bash
 
-exec /usr/sbin/grafana-server --homepath=/usr/share/grafana \
+exec /usr/sbin/grafana-server --homepath=/usr/share/grafana/ \
      --config=/etc/grafana/grafana.ini cfg:default.log.mode="console"  >> /var/log/grafana.log 2>&1
 

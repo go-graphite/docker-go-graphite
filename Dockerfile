@@ -25,15 +25,18 @@ RUN wget https://github.com/lomik/go-carbon/releases/download/v0.10.1/go-carbon_
   && service go-carbon stop
 
 # install grafana
+ADD conf/etc/grafana/grafana.ini /etc/grafana/grafana.ini
 RUN wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_4.4.1_amd64.deb \
   && dpkg -i grafana_4.4.1_amd64.deb \
   && rm /grafana_4.4.1_amd64.deb \
   && service grafana-server restart \
   && sleep 5 \
   && curl -X POST -H 'Content-Type: application/json' -u 'admin:admin' \
-  -d '{ "name": "carbonapi", "type": "graphite", "url": "https://127.0.0.1:8081", "access": "proxy", "basicAuth": false }' \
+  -d '{ "name": "carbonapi", "type": "graphite", "url": "http://127.0.0.1:8081", "access": "proxy", "basicAuth": false }' \
   "http://127.0.0.1:3000/api/datasources" \
-  && service grafana-server stop
+  && service grafana-server stop \
+  && mkdir -p /usr/share/grafana/data \
+  && mv -fv /var/lib/grafana/* /usr/share/grafana/data
 
 # config nginx
 RUN rm /etc/nginx/sites-enabled/default
