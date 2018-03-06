@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.22
+FROM phusion/baseimage:0.10.0
 MAINTAINER Denys Zhdanov <denis.zhdanov@gmail.com>
 
 RUN apt-get -y update \
@@ -17,18 +17,18 @@ RUN apt-get -y update \
   && rm -rf /var/lib/apt/lists/*
 
 # install go-carbon
-RUN wget https://github.com/lomik/go-carbon/releases/download/v0.11.0/go-carbon_0.11.0_amd64.deb \
-  && dpkg -i go-carbon_0.10.1_amd64.deb \
-  && rm /go-carbon_0.10.1_amd64.deb \
+RUN wget https://github.com/lomik/go-carbon/releases/download/v0.12.0-rc1/go-carbon_0.12.0-rc1_amd64.deb \
+  && dpkg -i go-carbon_0.12.0-rc1_amd64.deb \
+  && rm /go-carbon_0.12.0-rc1_amd64.deb \
   && mkdir -p /var/lib/graphite/whisper \
   && mkdir -p /var/lib/graphite/dump \
   && service go-carbon stop
 
 # install grafana
 ADD conf/etc/grafana/grafana.ini /etc/grafana/grafana.ini
-RUN wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_4.6.2_amd64.deb  \
-  && dpkg -i grafana_4.4.1_amd64.deb \
-  && rm /grafana_4.4.1_amd64.deb \
+RUN wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_5.0.0_amd64.deb  \
+  && dpkg -i grafana_5.0.0_amd64.deb \
+  && rm /grafana_5.0.0_amd64.deb \
   && service grafana-server restart \
   && sleep 5 \
   && curl -X POST -H 'Content-Type: application/json' -u 'admin:admin' \
