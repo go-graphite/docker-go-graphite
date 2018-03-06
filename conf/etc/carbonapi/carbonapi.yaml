@@ -1,13 +1,3 @@
-# Need to be URL, http or https
-# This url specifies the backend or a loadbalancer
-#
-# Is you are using carbonzipper you should set it to
-# zipper's url
-#
-# If you are using plain go-carbon or graphite-clickhouse
-# you should set it to URL of go-carbon's carbonserver module
-# or graphite-clickhouse's http url.
-zipper: "http://localhost:8080"
 # Listen address, should always include hostname or ip address and a port.
 listen: "localhost:8081"
 # Max concurrent requests to CarbonZipper
@@ -54,6 +44,47 @@ graphite:
 # Maximium idle connections to carbonzipper
 idleConnections: 10
 pidFile: ""
+upstreams:
+    # Number of 100ms buckets to track request distribution in. Used to build
+    # 'carbon.zipper.hostname.requests_in_0ms_to_100ms' metric and friends.
+    # Requests beyond the last bucket are logged as slow
+    # (default of 10 implies "slow" is >1 second).
+    buckets: 10
+    timeouts:
+        # Maximum total backend requesting timeout in ms.
+        # ( How long we may spend making requests. )
+        global: "15s"
+        # Timeout, in ms, once the final backend has been contacted.
+        # ( [Effectively] How long we'll wait for the slowest response. )
+        afterStarted: "10s"
+        # Timeout to connect to the server
+        connect: "200ms"
+    # Number of concurrent requests to any given backend - default is no limit.
+    # If set, you likely want >= MaxIdleConnsPerHost
+    concurrencyLimit: 0
+    # Configures how often keep alive packets will be sent out
+    keepAliveInterval: "30s"
+    # Control http.MaxIdleConnsPerHost. Large values can lead to more idle
+    # connections on the backend servers which may bump into limits; tune with care.
+    maxIdleConnsPerHost: 100
+    # "http://host:port" array of instances of carbonserver stores
+    # This is the *ONLY* config element in this section that MUST be specified.
+    # loclhost:8080 - go-carbon
+    backends:
+      - "http://localhost:8080"
+    carbonsearch:
+        # Instance of carbonsearch backend
+        backend: "http://127.0.0.1:8070"
+        # carbonsearch prefix to reserve/register
+        prefix: "virt.v1.*"
+    # Enable compatibility with graphite-web 0.9
+    # This will affect graphite-web 1.0+ with multiple cluster_servers
+    # Default: disabled
+    graphite09compat: false
+# If not zero, enabled cache for find requests
+# This parameter controls when it will expire (in seconds)
+# Default: 600 (10 minutes)
+expireDelaySec: 0
 # See https://github.com/go-graphite/carbonzipper/blob/master/example.conf#L70-L108 for format explanation
 logger:
     - logger: ""
