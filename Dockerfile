@@ -17,9 +17,9 @@ RUN apt-get -y update \
   && rm -rf /var/lib/apt/lists/*
 
 # install go-carbon
-RUN wget https://github.com/lomik/go-carbon/releases/download/v0.12.0-rc1/go-carbon_0.12.0-rc1_amd64.deb \
-  && dpkg -i go-carbon_0.12.0-rc1_amd64.deb \
-  && rm /go-carbon_0.12.0-rc1_amd64.deb \
+RUN wget https://github.com/lomik/go-carbon/releases/download/v0.12.0/go-carbon_0.12.0_amd64.deb \
+  && dpkg -i go-carbon_0.12.0_amd64.deb \
+  && rm /go-carbon_0.12.0_amd64.deb \
   && mkdir -p /var/lib/graphite/whisper \
   && mkdir -p /var/lib/graphite/dump \
   && service go-carbon stop
