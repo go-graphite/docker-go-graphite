@@ -26,15 +26,11 @@ RUN wget https://github.com/lomik/go-carbon/releases/download/v0.12.0/go-carbon_
 
 # install grafana
 ADD conf/etc/grafana/grafana.ini /etc/grafana/grafana.ini
-ADD conf/etc/grafana/provisioning/datasources/carbonapi.yaml /etc/grafana/provisioning/datasources/carbonapi.yaml
+ADD conf/etc/grafana/provisioning/datasources/carbonapi.yaml /usr/share/grafana/conf/provisioning/datasources/carbonapi.yaml
 RUN wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_5.0.1_amd64.deb \
   && dpkg -i grafana_5.0.1_amd64.deb \
   && rm /grafana_5.0.1_amd64.deb \
-  && service grafana-server restart \
-  && sleep 5 \
-  && service grafana-server stop \
-  && mkdir -p /usr/share/grafana/data \
-  && mv -fv /var/lib/grafana/* /usr/share/grafana/data
+  && service grafana-server stop
 
 # config nginx
 RUN rm /etc/nginx/sites-enabled/default
