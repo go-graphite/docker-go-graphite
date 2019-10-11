@@ -1,5 +1,5 @@
 # Listen address, should always include hostname or ip address and a port.
-listen: "localhost:8081"
+listen: "0.0.0.0:8081"
 # Max concurrent requests to CarbonZipper
 concurency: 20
 cache:
