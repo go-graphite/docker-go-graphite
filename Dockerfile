@@ -1,71 +1,115 @@
-FROM phusion/baseimage:0.10.0
-MAINTAINER Denys Zhdanov <denis.zhdanov@gmail.com>
+# ---------------------- BUILD IMAGE ---------------------------------------
+FROM golang:1-alpine as builder
 
-RUN apt-get -y update \
-  && apt-get -y upgrade \
-  && apt-get -y --force-yes install ca-certificates \
-  apt-transport-https \
-  wget \
-  nginx \
-  git \
-  sqlite3 \
-  libcairo2 \
-  libcairo2-dev \
-  && curl -s https://packagecloud.io/install/repositories/go-graphite/stable/script.deb.sh | bash \
-  && apt-get install -y carbonapi carbonzipper \
-  && mkdir /etc/carbonapi/ \
-  && rm -rf /var/lib/apt/lists/*
+ENV GOCARBON_VERSION=0.14.0
+ENV CARBONAPI_VERSION=0.12.6
+ENV GRAFANA_VERSION=6.4.3
+ENV GOPATH=/opt/go
 
-# install go-carbon
-RUN wget https://github.com/lomik/go-carbon/releases/download/v0.12.0/go-carbon_0.12.0_amd64.deb \
-  && dpkg -i go-carbon_0.12.0_amd64.deb \
-  && rm /go-carbon_0.12.0_amd64.deb \
-  && mkdir -p /var/lib/graphite/whisper \
-  && mkdir -p /var/lib/graphite/dump \
-  && service go-carbon stop
+RUN \
+  apk update  --no-cache && \
+  apk upgrade --no-cache && \
+  apk add g++ git make musl-dev cairo-dev
 
-# install grafana
-ADD conf/etc/grafana/grafana.ini /etc/grafana/grafana.ini
-ADD conf/etc/grafana/provisioning/datasources/carbonapi.yaml /etc/grafana/provisioning/datasources/carbonapi.yaml
-RUN wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_5.0.1_amd64.deb \
-  && dpkg -i grafana_5.0.1_amd64.deb \
-  && rm /grafana_5.0.1_amd64.deb \
-  && service grafana-server restart \
-  && sleep 5 \
-  && service grafana-server stop \
-  && mkdir -p /usr/share/grafana/data \
-  && mv -fv /var/lib/grafana/* /usr/share/grafana/data
+# Install Grafana
 
-# config nginx
-RUN rm /etc/nginx/sites-enabled/default
-ADD conf/etc/nginx/nginx.conf /etc/nginx/nginx.conf
-ADD conf/etc/nginx/sites-enabled/go-graphite.conf /etc/nginx/sites-enabled/go-graphite.conf
+RUN mkdir /tmp/grafana \
+  && wget -P /tmp/ https://dl.grafana.com/oss/release/grafana-${GRAFANA_VERSION}.linux-amd64.tar.gz \
+  && tar xfz /tmp/grafana-${GRAFANA_VERSION}.linux-amd64.tar.gz --strip-components=1 -C /tmp/grafana
 
-# config go-carbon
-ADD conf/etc/go-carbon/go-carbon.conf /etc/go-carbon/go-carbon.conf
-ADD conf/etc/go-carbon/storage-aggregation.conf /etc/go-carbon/storage-aggregation.conf
-ADD conf/etc/go-carbon/storage-schemas.conf /etc/go-carbon/storage-schemas.conf
+# Install go-carbon
 
-# config carbonapi
-ADD conf/etc/carbonapi/carbonapi.yaml /etc/carbonapi/carbonapi.yaml
+WORKDIR ${GOPATH}
 
-# logging support
-RUN mkdir -p /var/log/go-carbon /var/log/carbonapi /var/log/nginx
-ADD conf/etc/logrotate.d/go-graphite.conf /etc/logrotate.d/go-graphite.conf
+RUN \
+  export PATH="${PATH}:${GOPATH}/bin" && \
+  mkdir -p \
+    /var/log/go-carbon && \
+  git clone https://github.com/lomik/go-carbon.git
 
-# daemons
-ADD conf/etc/service/go-carbon/run /etc/service/go-carbon/run
-ADD conf/etc/service/carbonapi/run /etc/service/carbonapi/run
-ADD conf/etc/service/grafana/run /etc/service/grafana/run
-ADD conf/etc/service/nginx/run /etc/service/nginx/run
+WORKDIR ${GOPATH}/go-carbon
 
-# cleanup
-RUN apt-get clean\
- && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN \
+  export PATH="${PATH}:${GOPATH}/bin" && \
+  git checkout "tags/v${GOCARBON_VERSION}" 2> /dev/null ; \
+  version=$(git describe --tags --always | sed 's/^v//') && \
+  echo "build version: ${version}" && \
+  make && \
+  mv go-carbon /tmp/go-carbon
 
-# defaults
-EXPOSE 80 2003 2004 8080 8081
-VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/nginx", "/etc/grafana", "/etc/logrotate.d", "/var/log"]
+# Install carbonapi
+
+WORKDIR ${GOPATH}
+
+RUN \
+  export PATH="${PATH}:${GOPATH}/bin" && \
+  mkdir -p \
+    /var/log/carbonapi && \
+  git clone https://github.com/go-graphite/carbonapi.git
+
+WORKDIR ${GOPATH}/carbonapi
+
+RUN \
+  export PATH="${PATH}:${GOPATH}/bin" && \
+  git checkout "tags/${CARBONAPI_VERSION}" 2> /dev/null ; \
+  version=${CARBONAPI_VERSION} && \
+  echo "build version: ${version}" && \
+  make && \
+  mv carbonapi /tmp/carbonapi
+
+# ------------------------------ RUN IMAGE --------------------------------------
+FROM alpine:3.10
+
+ENV TZ='Europe/Amsterdam'
+
+COPY --from=builder /tmp/grafana/bin/grafana-cli           /usr/bin/grafana-cli 
+COPY --from=builder /tmp/grafana/bin/grafana-server        /usr/sbin/grafana-server
+COPY --from=builder /tmp/grafana/conf                      /usr/share/grafana/conf
+COPY --from=builder /tmp/grafana/public                    /usr/share/grafana/public
+COPY --from=builder /tmp/grafana/tools                     /usr/share/grafana/tools
+COPY --from=builder /tmp/go-carbon                         /usr/bin/go-carbon
+COPY --from=builder /tmp/carbonapi                         /usr/bin/carbonapi
+
+COPY conf/ /
+
+RUN \
+  apk update --no-cache && \
+  apk upgrade --no-cache && \
+  apk add    --no-cache --virtual .build-deps \
+    cairo \
+    shadow \
+    tzdata \
+    nginx \
+    runit \
+    dcron \
+    logrotate \
+    libc6-compat \
+    ca-certificates \
+    su-exec \
+    bash \
+  && rm -rf \
+      /etc/nginx/conf.d/default.conf /etc/nginx/sites-enabled/default && \
+  cp "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
+  echo "${TZ}" > /etc/timezone && \
+  /usr/sbin/useradd \
+    --system \
+    -U \
+    -s /bin/false \
+    -c "User for Graphite daemon" \
+    carbon && \
+  mkdir \
+    /var/log/go-carbon && \
+  chown -R carbon:carbon /var/log/go-carbon && \
+  rm -rf \
+    /tmp/* \
+    /var/cache/apk/*
+
 WORKDIR /
+
+VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/nginx", "/etc/grafana", "/etc/logrotate.d", "/var/log"]
+
 ENV HOME /root
-CMD ["/sbin/my_init"]
+
+EXPOSE 80 2003 2003/udp 2004 8080 8081
+
+CMD ["/entrypoint.sh"]

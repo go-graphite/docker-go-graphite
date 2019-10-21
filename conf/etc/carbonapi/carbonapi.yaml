@@ -1,7 +1,52 @@
+# Need to be URL, http or https
+# This url specifies the backend or a loadbalancer
+#
+# Is you are using carbonzipper you should set it to
+# zipper's url
+#
+# If you are using plain go-carbon or graphite-clickhouse
+# you should set it to URL of go-carbon's carbonserver module
+# or graphite-clickhouse's http url.
 # Listen address, should always include hostname or ip address and a port.
 listen: "localhost:8081"
+# Specify URL Prefix for all handlers
+prefix: ""
+# Specify if metrics are exported over HTTP and if they are available on the same address or not
+# pprofEnabled controls if extra HTTP Handlers to profile and debug application will be available
+expvar:
+  enabled: true
+  pprofEnabled: false
+  listen: ""
+# Allow extra charsets in metric names. By default only "Latin" is allowed
+# Please note that each unicodeRangeTables will slow down metric parsing a bit
+#   For list of supported tables, see: https://golang.org/src/unicode/tables.go?#L3437
+#   Special name "all" reserved to append all tables that's currently supported by Go
+#unicodeRangeTables:
+#   - "Latin"
+#   - "Cyrillic"
+#   - "Hiragana"
+#   - "Katakana"
+#   - "Han"
+##   - "all"
+# Controls headers that would be passed to the backend
+headersToPass:
+  - "X-Dashboard-Id"
+  - "X-Grafana-Org-Id"
+  - "X-Panel-Id"
+headersToLog:
+  - "X-Dashboard-Id"
+  - "X-Grafana-Org-Id"
+  - "X-Panel-Id"
+# Specify custom function aliases.
+#  This is example for alias "perMinute(metrics)" that will behave as "perSecond(metric)|scale(60)"
+define:
+  -
+    name: "perMinute"
+    template: "perSecond({{.argString}})|scale(60)"
+# Control what status code will be returned where /render or find query do not return any metric
+notFoundStatusCode: 404
 # Max concurrent requests to CarbonZipper
-concurency: 20
+concurency: 1000
 cache:
    # Type of caching. Valid: "mem", "memcache", "null"
    type: "mem"
@@ -17,66 +62,58 @@ cache:
 cpus: 0
 # Timezone, default - local
 tz: ""
-# If 'true', carbonapi will send requests as is, with globs and braces
-# Otherwise for each request it will generate /metrics/find and then /render
-# individual metrics.
-# true --- faster, but will cause carbonzipper to consume much more RAM.
-#
-# For some backends (e.x. graphite-clickhouse) this *MUST* be set to true in order
-# to get reasonable performance
-#
-# For go-carbon --- it depends on how you use it.
-sendGlobsAsIs: false
-# If sendGlobsAsIs is set and resulting response will be larger than maxBatchSize
-# carbonapi will revert to old behavir. This allows you to use benifits of passing
-# globs as is but keep memory usage in sane limits.
-#
-# For go-carbon you might want it to keep in some reasonable limits, 100 is good "safe" defaults
-#
-# For some backends (e.x. graphite-clickhouse) you might want to set it to some insanly high value, like 100000
+
+#functionsConfig:
+#    graphiteWeb: ./graphiteWeb.example.yaml
 maxBatchSize: 100
 graphite:
     # Host:port where to send internal metrics
     # Empty = disabled
-    host: "localhost:2003"
+    host: ""
     interval: "60s"
     prefix: "carbon.api"
+    # rules on how to construct metric name. For now only {prefix} and {fqdn} is supported.
+    # {prefix} will be replaced with the content of {prefix}
+    # {fqdn} will be repalced with fqdn
+    pattern: "{prefix}.{fqdn}"
 # Maximium idle connections to carbonzipper
 idleConnections: 10
 pidFile: ""
+# See https://github.com/go-graphite/carbonzipper/blob/master/example.conf#L70-L108 for format explanation
 upstreams:
     # Number of 100ms buckets to track request distribution in. Used to build
     # 'carbon.zipper.hostname.requests_in_0ms_to_100ms' metric and friends.
-    # Requests beyond the last bucket are logged as slow
-    # (default of 10 implies "slow" is >1 second).
+    # Requests beyond the last bucket are logged as slow (default of 10 implies
+    # "slow" is >1 second).
+    # The last bucket is _not_ called 'requests_in_Xms_to_inf' on purpose, so
+    # we can change our minds about how many buckets we want to have and have
+    # their names remain consistent.
     buckets: 10
+
     timeouts:
-        # Maximum total backend requesting timeout in ms.
-        # ( How long we may spend making requests. )
-        global: "15s"
-        # Timeout, in ms, once the final backend has been contacted.
-        # ( [Effectively] How long we'll wait for the slowest response. )
-        afterStarted: "10s"
+        # Maximum backend request time for find requests.
+        find: "2s"
+        # Maximum backend request time for render requests. This is total one and doesn't take into account in-flight requests
+        render: "10s"
         # Timeout to connect to the server
         connect: "200ms"
+
     # Number of concurrent requests to any given backend - default is no limit.
     # If set, you likely want >= MaxIdleConnsPerHost
-    concurrencyLimit: 0
+    concurrencyLimitPerServer: 0
+
     # Configures how often keep alive packets will be sent out
     keepAliveInterval: "30s"
+
     # Control http.MaxIdleConnsPerHost. Large values can lead to more idle
     # connections on the backend servers which may bump into limits; tune with care.
     maxIdleConnsPerHost: 100
+
     # "http://host:port" array of instances of carbonserver stores
-    # This is the *ONLY* config element in this section that MUST be specified.
-    # loclhost:8080 - go-carbon
+    # It MUST be specified.
     backends:
-      - "http://localhost:8080"
-    carbonsearch:
-        # Instance of carbonsearch backend
-        backend: "http://127.0.0.1:8070"
-        # carbonsearch prefix to reserve/register
-        prefix: "virt.v1.*"
+        - "http://localhost:8080"
+
     # Enable compatibility with graphite-web 0.9
     # This will affect graphite-web 1.0+ with multiple cluster_servers
     # Default: disabled
@@ -84,8 +121,17 @@ upstreams:
 # If not zero, enabled cache for find requests
 # This parameter controls when it will expire (in seconds)
 # Default: 600 (10 minutes)
-expireDelaySec: 0
-# See https://github.com/go-graphite/carbonzipper/blob/master/example.conf#L70-L108 for format explanation
+#graphTemplates: graphTemplates.example.yaml
+expireDelaySec: 10
+# Uncomment this to get the behavior of graphite-web as proposed in https://github.com/graphite-project/graphite-web/pull/2239
+# Beware this will make darkbackground graphs less readable
+#defaultColors:
+#      "red": "ff0000"
+#      "green": "00ff00"
+#      "blue": "#0000ff"
+#      "darkred": "#c80032"
+#      "darkgreen": "00c800"
+#      "darkblue": "002173"
 logger:
     - logger: ""
       file: "stderr"
@@ -97,3 +143,6 @@ logger:
       file: "carbonapi.log"
       level: "info"
       encoding: "json"
+
+tagdb:
+      url: "http://127.0.0.1:9090"
