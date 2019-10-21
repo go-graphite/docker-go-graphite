@@ -1,3 +1,5 @@
 #!/bin/bash
 
+sleep 5
+
 exec /usr/bin/carbonapi -config /etc/carbonapi/carbonapi.yaml

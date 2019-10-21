@@ -1,5 +1,22 @@
 #!/bin/bash
 
+if [ ! -z "${GF_INSTALL_PLUGINS}" ]; then
+  OLDIFS=$IFS
+  IFS=','
+  for plugin in ${GF_INSTALL_PLUGINS}; do
+    IFS=$OLDIFS
+    if [[ $plugin =~ .*\;.* ]]; then
+        pluginUrl=$(echo "$plugin" | cut -d';' -f 1)
+        pluginWithoutUrl=$(echo "$plugin" | cut -d';' -f 2)
+        /usr/bin/grafana-cli --pluginUrl "${pluginUrl}" --pluginsDir "${GF_PATHS_PLUGINS}" plugins install ${pluginWithoutUrl}
+    else
+        /usr/bin/grafana-cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install ${plugin}
+    fi
+  done
+fi
+
 exec /usr/sbin/grafana-server --homepath=/usr/share/grafana/ \
-     --config=/etc/grafana/grafana.ini cfg:default.log.mode="console"  >> /var/log/grafana.log 2>&1
+     --config=/etc/grafana/grafana.ini \
+     cfg:default.paths.provisioning="/etc/grafana/provisioning" \
+     cfg:default.log.mode="console"  >> /var/log/grafana.log 2>&1
 
