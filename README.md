@@ -29,8 +29,8 @@ Host | Container | Service
 ### Exposed Ports
 
 Container | Service
---------- | -------------------------------------------------------------------------------------------------------------------
-     8081 | [caronapi](https://github.com/go-graphite/carbonapi/blob/master/doc/configuration.md#general-configuration-for-carbonapi)
+--------- | -------------------------------------------------------------------------------------------------------------------------
+   8081   | [caronapi](https://github.com/go-graphite/carbonapi/blob/master/doc/configuration.md#general-configuration-for-carbonapi)
 
 ### Mounted Volumes
 
