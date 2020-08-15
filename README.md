@@ -26,6 +26,12 @@ Host | Container | Service
 2003 |      2003 | [carbon receiver - plaintext](http://graphite.readthedocs.io/en/latest/feeding-carbon.html#the-plaintext-protocol)
 2004 |      2004 | [carbon receiver - pickle](http://graphite.readthedocs.io/en/latest/feeding-carbon.html#the-pickle-protocol)
 
+### Exposed Ports
+
+Container | Service
+--------- | -------------------------------------------------------------------------------------------------------------------------
+   8081   | [carbonapi](https://github.com/go-graphite/carbonapi/blob/master/doc/configuration.md#general-configuration-for-carbonapi)
+
 ### Mounted Volumes
 
 Host              | Container                  | Notes
