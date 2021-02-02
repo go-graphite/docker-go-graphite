@@ -37,6 +37,7 @@ datasources:
   isDefault: true
   # <map> fields that will be converted to json and stored in json_data
   jsonData:
-     graphiteVersion: "1.1.x"
+     graphiteVersion: "1.1"
+     graphiteType": "default"
   # <bool> allow users to edit datasources from the UI.
   editable: true
