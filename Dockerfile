@@ -1,9 +1,9 @@
 # ---------------------- BUILD IMAGE ---------------------------------------
 FROM golang:1-alpine as builder
 
-ENV GOCARBON_VERSION=0.14.0
-ENV CARBONAPI_VERSION=0.12.6
-ENV GRAFANA_VERSION=6.4.3
+ENV GOCARBON_VERSION=0.15.6
+ENV CARBONAPI_VERSION=0.14.2
+ENV GRAFANA_VERSION=7.3.7
 ENV GOPATH=/opt/go
 
 RUN \
@@ -66,7 +66,8 @@ COPY --from=builder /tmp/grafana/bin/grafana-cli           /usr/bin/grafana-cli
 COPY --from=builder /tmp/grafana/bin/grafana-server        /usr/sbin/grafana-server
 COPY --from=builder /tmp/grafana/conf                      /usr/share/grafana/conf
 COPY --from=builder /tmp/grafana/public                    /usr/share/grafana/public
-COPY --from=builder /tmp/grafana/tools                     /usr/share/grafana/tools
+COPY --from=builder /tmp/grafana/plugins-bundled           /usr/share/grafana/plugins-bundled
+COPY --from=builder /tmp/grafana/scripts                   /usr/share/grafana/scripts
 COPY --from=builder /tmp/go-carbon                         /usr/bin/go-carbon
 COPY --from=builder /tmp/carbonapi                         /usr/bin/carbonapi
 
