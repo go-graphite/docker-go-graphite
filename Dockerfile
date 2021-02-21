@@ -58,7 +58,7 @@ RUN \
   mv carbonapi /tmp/carbonapi
 
 # ------------------------------ RUN IMAGE --------------------------------------
-FROM alpine:3.10
+FROM alpine:3.13.2
 
 ENV TZ='Europe/Amsterdam'
 
