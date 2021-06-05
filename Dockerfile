@@ -11,12 +11,6 @@ RUN \
   apk upgrade --no-cache && \
   apk add g++ git make musl-dev cairo-dev
 
-# Install Grafana
-
-RUN mkdir /tmp/grafana \
-  && wget -P /tmp/ https://dl.grafana.com/oss/release/grafana-${GRAFANA_VERSION}.linux-amd64.tar.gz \
-  && tar xfz /tmp/grafana-${GRAFANA_VERSION}.linux-amd64.tar.gz --strip-components=1 -C /tmp/grafana
-
 # Install go-carbon
 
 WORKDIR ${GOPATH}
@@ -57,17 +51,22 @@ RUN \
   make && \
   mv carbonapi /tmp/carbonapi
 
+# ------------------------------ BRUBECK   --------------------------------------
+FROM alpine:3.8 AS brubeck-builder
+
+RUN \
+  apk update  --no-cache && \
+  apk upgrade --no-cache && \
+  apk add g++ git make musl-dev jansson-dev openssl-dev libmicrohttpd-dev git jq
+
+RUN git clone https://github.com/github/brubeck.git
+
+RUN cd brubeck && ./script/bootstrap
 # ------------------------------ RUN IMAGE --------------------------------------
-FROM alpine:3.13.2
+FROM alpine:3.8
 
-ENV TZ='Europe/Amsterdam'
+ENV TZ='Etc/UTC'
 
-COPY --from=builder /tmp/grafana/bin/grafana-cli           /usr/bin/grafana-cli 
-COPY --from=builder /tmp/grafana/bin/grafana-server        /usr/sbin/grafana-server
-COPY --from=builder /tmp/grafana/conf                      /usr/share/grafana/conf
-COPY --from=builder /tmp/grafana/public                    /usr/share/grafana/public
-COPY --from=builder /tmp/grafana/plugins-bundled           /usr/share/grafana/plugins-bundled
-COPY --from=builder /tmp/grafana/scripts                   /usr/share/grafana/scripts
 COPY --from=builder /tmp/go-carbon                         /usr/bin/go-carbon
 COPY --from=builder /tmp/carbonapi                         /usr/bin/carbonapi
 
@@ -80,16 +79,17 @@ RUN \
     cairo \
     shadow \
     tzdata \
-    nginx \
     runit \
     dcron \
     logrotate \
     libc6-compat \
     ca-certificates \
     su-exec \
-    bash \
-  && rm -rf \
-      /etc/nginx/conf.d/default.conf /etc/nginx/sites-enabled/default && \
+    openssl \
+    jansson \
+    libmicrohttpd \
+    jq \
+    bash && \
   cp "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
   echo "${TZ}" > /etc/timezone && \
   /usr/sbin/useradd \
@@ -105,12 +105,18 @@ RUN \
     /tmp/* \
     /var/cache/apk/*
 
+COPY --from=brubeck-builder /brubeck/brubeck /bin/brubeck
+
+ADD conf/config.template.json /config.template.json
+
+ADD conf/generate_config.sh /bin/generate_config.sh
+
 WORKDIR /
 
-VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/nginx", "/etc/grafana", "/etc/logrotate.d", "/var/log"]
+VOLUME ["/etc/go-carbon", "/etc/carbonapi", "/var/lib/graphite", "/etc/logrotate.d", "/var/log"]
 
 ENV HOME /root
 
-EXPOSE 80 2003 2003/udp 2004 8080 8081
+EXPOSE 80 2003 2003/udp 2004 8080 8081 8125
 
 CMD ["/entrypoint.sh"]

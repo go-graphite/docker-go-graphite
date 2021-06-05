@@ -1,0 +1,5 @@
+#!/bin/bash
+
+/bin/generate_config.sh
+
+exec /bin/brubeck --config=/root/config.json
