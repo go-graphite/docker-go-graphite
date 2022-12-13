@@ -1,15 +1,15 @@
 # ---------------------- BUILD IMAGE ---------------------------------------
-FROM golang:1-alpine as builder
+FROM golang:1.18-alpine3.17 as builder
 
-ENV GOCARBON_VERSION=0.15.6
-ENV CARBONAPI_VERSION=0.14.2
-ENV GRAFANA_VERSION=7.3.7
+ENV GOCARBON_VERSION=0.16.2
+ENV CARBONAPI_VERSION=0.16.0
+ENV GRAFANA_VERSION=9.3.1
 ENV GOPATH=/opt/go
 
 RUN \
   apk update  --no-cache && \
   apk upgrade --no-cache && \
-  apk add g++ git make musl-dev cairo-dev
+  apk add g++ git make musl-dev cairo-dev bash
 
 # Install Grafana
 
@@ -58,7 +58,7 @@ RUN \
   mv carbonapi /tmp/carbonapi
 
 # ------------------------------ RUN IMAGE --------------------------------------
-FROM alpine:3.13.2
+FROM alpine:3.17.0
 
 ENV TZ='Europe/Amsterdam'
 
