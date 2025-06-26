@@ -1,8 +1,8 @@
 # ---------------------- BUILD IMAGE ---------------------------------------
-FROM golang:1.18-alpine3.17 as builder
+FROM golang:1.21-alpine3.17 as builder
 
-ENV GOCARBON_VERSION=0.16.2
-ENV CARBONAPI_VERSION=0.16.0
+ENV GOCARBON_VERSION=0.18.0
+ENV CARBONAPI_VERSION=0.17.0
 ENV GRAFANA_VERSION=9.3.1
 ENV GOPATH=/opt/go
 
